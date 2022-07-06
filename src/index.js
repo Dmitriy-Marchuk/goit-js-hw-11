@@ -5,13 +5,14 @@ import 'simplelightbox/dist/simple-lightbox.min.css';
 import axios from 'axios';
 import ApiService from './js/components/api-service';
 import LoadMoreBtn from './js/components/load-more-btn';
+const axios = require('axios');
 
 const refs = {
   form: document.querySelector('#search-form'),
   galleryContainer: document.querySelector('div.gallery'),
-  // loadMoreBtn: document.querySelector('[data-action="load-more"]'),
 };
 
+let lightbox = new SimpleLightbox('.gallery a', {});
 const apiService = new ApiService();
 const loadMoreBtn = new LoadMoreBtn({
   selector: '[data-action="load-more"]',
@@ -31,8 +32,8 @@ function onFormSubmit(e) {
   if (apiService.query == '') {
     return Notiflix.Notify.failure('Enter a query in the search!');
   }
-  apiService.fetchArticles().then(({ total, hits }) => {
-    if (total === 0) {
+  apiService.fetchArticles().then(({ data }) => {
+    if (data.total === 0) {
       loadMoreBtn.hide();
       clearArticlesContainer();
       return Notiflix.Notify.failure(
@@ -42,18 +43,23 @@ function onFormSubmit(e) {
     loadMoreBtn.show();
     loadMoreBtn.enable();
     clearArticlesContainer();
-    makeMarkupBox(hits);
+    makeMarkupBox(data.hits);
     lightbox.refresh();
-    Notiflix.Notify.info(`Hooray! We found ${total} images.`);
+    Notiflix.Notify.info(`Hooray! We found ${data.total} images.`);
+
+    loadMoreIsVisibleForSearch(data);
   });
 }
 
 function onLoadMore() {
   loadMoreBtn.disable();
-  apiService.fetchArticles().then(({ hits }) => {
-    makeMarkupBox(hits);
+  apiService.incrimentPage();
+
+  apiService.fetchArticles().then(({ data }) => {
+    makeMarkupBox(data.hits);
     loadMoreBtn.enable();
     lightbox.refresh();
+    loadMoreIsVisible(data);
   });
 }
 
@@ -93,4 +99,18 @@ function clearArticlesContainer() {
   refs.galleryContainer.innerHTML = '';
 }
 
-let lightbox = new SimpleLightbox('.gallery a', {});
+function loadMoreIsVisible(data) {
+  const lastPage = Math.ceil(data.totalHits / data.pageSize);
+  if (data.page === lastPage) {
+    loadMoreBtn.hide();
+    Notiflix.Notify.info(
+      "We're sorry, but you've reached the end of search results."
+    );
+  }
+}
+
+function loadMoreIsVisibleForSearch(data) {
+    const lastPage = Math.ceil(data.totalHits / data.pageSize);
+  if (data.page === lastPage) {
+    loadMoreBtn.hide();
+}
